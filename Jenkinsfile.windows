@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Check Python') {
+            steps {
+                bat 'python --version'
+                bat 'git --version'
+            }
+        }
+
+        stage('Create virtual environment') {
+            steps {
+                bat 'if not exist .venv\\Scripts\\python.exe python -m venv .venv'
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                bat '.venv\\Scripts\\python.exe -m pip install --upgrade pip'
+                bat '.venv\\Scripts\\python.exe -m pip install -r requirements.txt pytest'
+            }
+        }
+
+        stage('Unit tests') {
+            steps {
+                bat '.venv\\Scripts\\python.exe -m pytest -v'
+            }
+        }
+
+        stage('Archive application files') {
+            steps {
+                archiveArtifacts artifacts: 'app.py,requirements.txt,test_app.py,Jenkinsfile.windows', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Flask CI completed successfully: dependencies installed and unit tests passed.'
+        }
+        failure {
+            echo 'Flask CI failed. Review the stage logs.'
+        }
+        always {
+            deleteDir()
+        }
+    }
+}
